@@ -1,0 +1,29 @@
+from app import app
+from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
+import pandas as pd
+import json
+
+
+#Connect to Astra Cluster
+#Redo this after git project restructuring
+with open('astra.credentials/UserCred.json') as f:
+    cred = json.load(f)
+cloud_config= {
+        'secure_connect_bundle': 'astra.credentials/secure-connect-'+cred['cluster'].replace("_","-")+'.zip'
+}
+auth_provider = PlainTextAuthProvider(cred['username'], cred['password'])
+cluster = Cluster(cloud=cloud_config, auth_provider=auth_provider)
+session = cluster.connect()
+row = session.execute("select release_version from system.local").one()
+
+#Create Table cred['table'] if it does not exist
+session.set_keyspace(cred['keyspace'])
+f = open('astra.import/Leaves.Astra.cql')
+exec_command = str(f.read())
+exec_command = exec_command.replace('keyspace_name',cred['keyspace'],1)
+exec_command = exec_command.replace('table_name',cred['table'],1)
+print(exec_command)
+session.execute(exec_command).one()
+
+
